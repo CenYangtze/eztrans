@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <GenerateDependencyFile>true</GenerateDependencyFile>
+    <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../SnapTrans.Core/SnapTrans.Core.csproj" />
+    <!-- Optional plugin: do not copy the vendor's bundled models into the base application. -->
+    <PackageReference Include="RapidOcrNet" ExcludeAssets="build;buildTransitive" />
+  </ItemGroup>
+</Project>

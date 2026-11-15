@@ -1,0 +1,168 @@
+name: Build and package
+
+on:
+  push:
+    paths-ignore:
+      - 'site/**'
+      - 'README.md'
+      - '.github/workflows/pages.yml'
+  pull_request:
+    paths-ignore:
+      - 'site/**'
+      - 'README.md'
+      - '.github/workflows/pages.yml'
+  workflow_dispatch:
+    inputs:
+      log_screenshots:
+        description: 'Regex of smoke-test screenshot names to print to the job log as base64 JPEG (empty: none)'
+        required: false
+        default: ''
+      release_version:
+        description: 'Publish this build as a GitHub release, e.g. 1.0.2 (must equal the version in Directory.Build.props; empty: do not publish)'
+        required: false
+        default: ''
+      upload_assets:
+        description: 'Keep all built packages as a workflow artifact for 2 days'
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+jobs:
+  windows:
+    name: Windows x64/ARM64 release packages
+    runs-on: windows-latest
+    permissions:
+      # Needed only by the final step, which publishes a release for a version tag or a manual request.
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+          cache: true
+          cache-dependency-path: '**/packages*.lock.json'
+      - run: dotnet tool restore
+      - run: dotnet restore SnapTrans.sln --locked-mode
+      - run: dotnet build SnapTrans.sln --configuration Release --no-restore
+      - name: Publish x64 application, optional OCR component, Inno and Velopack
+        shell: pwsh
+        run: ./tools/publish.ps1 -Runtime win-x64 -Mode all -CreateZip -IncludePaddle -BuildInstaller -BuildVelopack
+      - name: Smoke test actual x64 startup, IPC, and Inno install/uninstall
+        shell: pwsh
+        env:
+          SNAPTRANS_SCREENSHOT_DIR: ${{ runner.temp }}/ui-screenshots
+        run: |
+          [xml] $props = Get-Content Directory.Build.props -Raw
+          $version = [string] $props.Project.PropertyGroup.Version
+          ./tools/smoke-windows.ps1 -Executable out/scd/SnapTrans.exe -Installer "out/installers/SnapTrans-$version-win-x64-scd-setup.exe"
+      - name: Upload UI screenshots from the smoke test
+        if: always()
+        continue-on-error: true
+        uses: actions/upload-artifact@v4
+        with:
+          name: ui-screenshots
+          retention-days: 7
+          path: ${{ runner.temp }}/ui-screenshots/*.png
+          if-no-files-found: ignore
+      - name: Cross-publish ARM64 application, optional OCR component, Inno and Velopack
+        shell: pwsh
+        run: ./tools/publish.ps1 -Runtime win-arm64 -Mode all -CreateZip -IncludePaddle -BuildInstaller -BuildVelopack
+      - name: Collect release assets without raw app output
+        shell: pwsh
+        run: |
+          [xml] $props = Get-Content Directory.Build.props -Raw
+          $version = [string] $props.Project.PropertyGroup.Version
+          $assetDirectory = Join-Path $PWD 'release-assets'
+          New-Item -ItemType Directory -Force -Path $assetDirectory | Out-Null
+          $names = [Collections.Generic.HashSet[string]]::new([StringComparer]::OrdinalIgnoreCase)
+          foreach ($runtime in 'win-x64', 'win-arm64') {
+            $root = if ($runtime -eq 'win-x64') { Join-Path $PWD 'out' } else { Join-Path $PWD "out/$runtime" }
+            $files = @(
+              (Join-Path $root "SnapTrans-$version-$runtime-fdd.zip"),
+              (Join-Path $root "SnapTrans-$version-$runtime-scd.zip"),
+              (Join-Path $root "SnapTrans-$version-$runtime-paddle.zip"),
+              (Join-Path $root "publish-manifest.$runtime.json"),
+              (Join-Path $root "installers/SnapTrans-$version-$runtime-fdd-setup.exe"),
+              (Join-Path $root "installers/SnapTrans-$version-$runtime-scd-setup.exe")
+            )
+            $updates = @(Get-ChildItem -LiteralPath (Join-Path $root 'velopack') -File)
+            if (-not ($updates | Where-Object Extension -eq '.nupkg')) { throw "Missing update package for $runtime" }
+            if (-not ($updates | Where-Object Name -like '*Setup.exe')) { throw "Missing Velopack Setup for $runtime" }
+            if (-not ($updates | Where-Object Name -like '*Portable.zip')) { throw "Missing Velopack Portable for $runtime" }
+            if (-not ($updates | Where-Object Name -like "releases.$runtime.json")) { throw "Missing update feed for $runtime" }
+            $files += $updates | Where-Object { $_.Extension -in '.exe', '.zip', '.nupkg', '.json' -or $_.Name -like 'RELEASES*' } | ForEach-Object FullName
+            foreach ($path in $files) {
+              if (-not (Test-Path -LiteralPath $path -PathType Leaf)) { throw "Missing asset: $path" }
+              $name = Split-Path -Leaf $path
+              if (-not $names.Add($name)) { throw "Duplicate release filename: $name" }
+              Copy-Item -LiteralPath $path -Destination $assetDirectory
+            }
+          }
+      # The complete package set is close to 1 GB, so it is kept as an artifact only on request.
+      - name: Upload Windows release assets
+        if: ${{ inputs.upload_assets }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: SnapTrans-windows-all
+          path: release-assets/*
+          if-no-files-found: error
+          retention-days: 2
+      - name: Print selected UI screenshots to the log (manual runs only)
+        if: ${{ always() && inputs.log_screenshots != '' }}
+        shell: pwsh
+        env:
+          SHOTS: ${{ inputs.log_screenshots }}
+        run: |
+          # For reviewers who can read job logs but cannot download artifacts.
+          Add-Type -AssemblyName System.Drawing
+          $codec = [System.Drawing.Imaging.ImageCodecInfo]::GetImageEncoders() | Where-Object MimeType -eq 'image/jpeg'
+          $quality = [System.Drawing.Imaging.EncoderParameters]::new(1)
+          $quality.Param[0] = [System.Drawing.Imaging.EncoderParameter]::new([System.Drawing.Imaging.Encoder]::Quality, [long] 55)
+          $files = @(Get-ChildItem "$env:RUNNER_TEMP/ui-screenshots" -Filter '*.png' -ErrorAction SilentlyContinue | Where-Object { $_.BaseName -match $env:SHOTS })
+          foreach ($file in $files) {
+            $image = [System.Drawing.Image]::FromFile($file.FullName)
+            $stream = [IO.MemoryStream]::new()
+            $image.Save($stream, $codec, $quality)
+            $image.Dispose()
+            Write-Output "SHOT-BEGIN $($file.BaseName)"
+            Write-Output ([Convert]::ToBase64String($stream.ToArray()))
+            Write-Output "SHOT-END $($file.BaseName)"
+          }
+          Write-Output "Printed $($files.Count) screenshot(s)."
+
+      # Runs last, after packaging and the smoke test of this very build. Release assets go straight
+      # to the release, so publishing does not depend on workflow artifact storage.
+      - name: Publish installers, portable packages, optional components and update feeds
+        if: ${{ startsWith(github.ref, 'refs/tags/v') || inputs.release_version != '' }}
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RELEASE_VERSION: ${{ inputs.release_version }}
+        run: |
+          [xml] $props = Get-Content Directory.Build.props -Raw
+          $version = [string] $props.Project.PropertyGroup.Version
+          $tag = if ($env:GITHUB_REF -like 'refs/tags/v*') { $env:GITHUB_REF_NAME } else { 'v' + $env:RELEASE_VERSION.Trim().TrimStart('v') }
+          if ($tag -ne "v$version") { throw "Requested release $tag does not match the built version $version." }
+          $notes = ".github/release-notes/$tag.md"
+          if (-not (Test-Path -LiteralPath $notes -PathType Leaf)) { throw "Missing release notes: $notes" }
+          # Publish only what users and the in-app updater need.
+          $files = foreach ($runtime in 'win-x64', 'win-arm64') {
+            "release-assets/SnapTrans-$version-$runtime-scd-setup.exe"
+            "release-assets/SnapTrans-$version-$runtime-scd.zip"
+            "release-assets/SnapTrans-$version-$runtime-paddle.zip"
+            "release-assets/SnapTrans-$version-$runtime-full.nupkg"
+            "release-assets/releases.$runtime.json"
+            "release-assets/SnapTrans-$runtime-Setup.exe"
+          }
+          foreach ($file in $files) { if (-not (Test-Path -LiteralPath $file -PathType Leaf)) { throw "Missing release asset: $file" } }
+          $existing = @(gh release list --limit 200 --json tagName --jq '.[].tagName')
+          if ($LASTEXITCODE -ne 0) { throw 'Could not list existing releases.' }
+          if ($existing -contains $tag) { throw "Release $tag already exists; it was not changed." }
+          $options = @()
+          if ($tag -like 'v0.*' -or $tag -like '*-*') { $options += '--prerelease' }
+          gh release create $tag @files --target $env:GITHUB_SHA --title "屏译 SnapTrans $tag" --notes-file $notes @options
+          if ($LASTEXITCODE -ne 0) { throw "gh release create failed with exit code $LASTEXITCODE." }
+          Write-Output "Published $tag with $($files.Count) assets from $env:GITHUB_SHA."

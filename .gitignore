@@ -1,0 +1,11 @@
+**/bin/
+**/obj/
+.vs/
+.idea/
+TestResults/
+out/
+artifacts/
+*.user
+*.suo
+# Temporary session state emitted by the packaging CLI.
+/:memory:.ses

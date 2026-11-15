@@ -1,0 +1,24 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <StartupObject>SnapTrans.App.Program</StartupObject>
+    <TargetFramework>net10.0-windows10.0.19041.0</TargetFramework>
+    <UseWPF>true</UseWPF><UseWindowsForms>true</UseWindowsForms>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <ApplicationIcon>Resources/SnapTrans.ico</ApplicationIcon>
+    <AssemblyName>SnapTrans</AssemblyName>
+    <PublishTrimmed>false</PublishTrimmed>
+    <RuntimeIdentifiers>win-x64;win-arm64</RuntimeIdentifiers>
+    <NoWarn>$(NoWarn);WFO0003</NoWarn>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../SnapTrans.Core/SnapTrans.Core.csproj"/>
+    <ProjectReference Include="../SnapTrans.Platform.Windows/SnapTrans.Platform.Windows.csproj"/>
+    <PackageReference Include="Microsoft.Extensions.Hosting"/>
+    <PackageReference Include="Serilog.Extensions.Hosting"/>
+    <PackageReference Include="Serilog.Sinks.File"/>
+    <PackageReference Include="Velopack"/>
+  </ItemGroup>
+  <ItemGroup><Using Remove="System.Windows.Forms"/><Using Remove="System.Drawing"/></ItemGroup>
+  <ItemGroup><EmbeddedResource Include="Resources/SnapTrans.ico" LogicalName="SnapTrans.Icon"/></ItemGroup>
+</Project>

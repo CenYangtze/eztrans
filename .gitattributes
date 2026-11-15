@@ -1,0 +1,2 @@
+# Preserve upstream license and notice files byte-for-byte, including original CRLF/spacing.
+licenses/** -text -whitespace

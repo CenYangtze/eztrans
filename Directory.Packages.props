@@ -1,0 +1,17 @@
+<Project>
+  <PropertyGroup><ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally></PropertyGroup>
+  <ItemGroup>
+    <PackageVersion Include="Velopack" Version="1.2.161"/>
+    <PackageVersion Include="RapidOcrNet" Version="4.2.0"/>
+    <PackageVersion Include="SkiaSharp" Version="3.119.1"/>
+    <PackageVersion Include="SkiaSharp.NativeAssets.Linux.NoDependencies" Version="3.119.1"/>
+    <PackageVersion Include="Microsoft.Extensions.Hosting" Version="10.0.0"/>
+    <PackageVersion Include="Serilog.Extensions.Hosting" Version="9.0.0"/>
+    <PackageVersion Include="Serilog.Sinks.File" Version="7.0.0"/>
+    <PackageVersion Include="System.Security.Cryptography.ProtectedData" Version="10.0.0"/>
+    <PackageVersion Include="xunit.v3" Version="3.2.0"/>
+    <PackageVersion Include="xunit.runner.visualstudio" Version="3.1.5"/>
+    <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="18.0.1"/>
+    <PackageVersion Include="coverlet.collector" Version="6.0.4"/>
+  </ItemGroup>
+</Project>

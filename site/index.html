@@ -1,0 +1,423 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>屏译 SnapTrans</title>
+<meta name="description" content="屏译 SnapTrans：为 Windows 打造的截图翻译工具。框选即译、原位译图、光标查词，支持 OpenAI 兼容接口、Anthropic 与本地模型。">
+<meta name="color-scheme" content="light">
+<meta name="theme-color" content="#ffffff">
+<meta property="og:type" content="website">
+<meta property="og:title" content="屏译 SnapTrans · 看见，即懂。">
+<meta property="og:description" content="框选屏幕上的任何文字，译文即刻呈现。为 Windows 打造的截图翻译、译图与查词工具。">
+<meta property="og:url" content="https://cenyangtze.github.io/eztrans/">
+<meta property="og:image" content="https://cenyangtze.github.io/eztrans/assets/og.jpg">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" type="image/png" href="assets/favicon.png">
+<link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
+<style>
+:root{
+  --text:#1d1d1f; --muted:#6e6e73; --subtle:#86868b; --line:#d2d2d7;
+  --bg:#ffffff; --bg2:#f5f5f7; --blue:#2367e8; --blue-hover:#1b57cc;
+  --grad:linear-gradient(92deg,#2367e8 0%,#5b5cf6 55%,#9b5cf6 100%);
+  --grad-dark:linear-gradient(92deg,#5c9dff 0%,#8c7cff 55%,#d08cff 100%);
+  --font:-apple-system,BlinkMacSystemFont,"SF Pro Display","SF Pro SC","PingFang SC","Segoe UI Variable Display","Segoe UI","Microsoft YaHei UI","Microsoft YaHei","Noto Sans SC","Noto Sans CJK SC","Helvetica Neue",Arial,sans-serif;
+  --mono:"SF Mono","Cascadia Code",Consolas,"Liberation Mono",monospace;
+  --wrap:1120px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth;-webkit-text-size-adjust:100%}
+body{font-family:var(--font);color:var(--text);background:var(--bg);line-height:1.5;-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility;overflow-x:hidden}
+img,video{display:block;max-width:100%;height:auto}
+a{color:var(--blue);text-decoration:none}
+a:hover{text-decoration:underline}
+:focus-visible{outline:3px solid rgba(35,103,232,.45);outline-offset:3px;border-radius:6px}
+.wrap{max-width:var(--wrap);margin:0 auto;padding:0 22px}
+.grad{background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent;white-space:nowrap}
+.dark .grad{background:var(--grad-dark);-webkit-background-clip:text;background-clip:text}
+
+/* navigation */
+.nav{position:sticky;top:0;z-index:20;height:52px;background:rgba(255,255,255,.72);-webkit-backdrop-filter:saturate(180%) blur(20px);backdrop-filter:saturate(180%) blur(20px);border-bottom:1px solid rgba(0,0,0,.08)}
+.nav .wrap{height:100%;display:flex;align-items:center;gap:28px}
+.brand{display:flex;align-items:center;gap:9px;color:var(--text);font-weight:600;font-size:17px}
+.brand:hover{text-decoration:none}
+.brand img{width:26px;height:26px}
+.nav nav{margin-left:auto;display:flex;align-items:center;gap:26px}
+.nav nav a{color:var(--text);font-size:14px;opacity:.82}
+.nav nav a:hover{opacity:1;text-decoration:none}
+.nav .pill{opacity:1;color:#fff;background:var(--blue);padding:5px 14px;border-radius:999px;font-size:13px;font-weight:500}
+.nav .pill:hover{background:var(--blue-hover)}
+
+/* buttons */
+.cta{display:flex;flex-wrap:wrap;gap:16px 26px;align-items:center;justify-content:center}
+.btn{display:inline-flex;align-items:center;gap:8px;font:500 17px var(--font);border-radius:999px;padding:12px 24px;border:0;cursor:pointer}
+.btn:hover{text-decoration:none}
+.btn.primary{background:var(--blue);color:#fff}
+.btn.primary:hover{background:var(--blue-hover)}
+.btn.link{background:none;color:var(--blue);padding:12px 4px}
+.btn.link:hover{text-decoration:underline}
+.btn svg{width:18px;height:18px}
+
+/* hero */
+.hero{text-align:center;padding:72px 0 0;background:var(--bg);overflow:hidden}
+.hero .logo{width:92px;height:92px;margin:0 auto 22px;filter:drop-shadow(0 14px 30px rgba(35,103,232,.28))}
+.eyebrow{font-size:21px;font-weight:600;color:var(--text)}
+.hero h1{font-size:clamp(52px,9vw,112px);line-height:1.06;font-weight:700;letter-spacing:-.01em;margin:6px 0 18px}
+.lead{font-size:clamp(19px,2.2vw,26px);line-height:1.45;color:var(--muted);max-width:760px;margin:0 auto 30px}
+.note{margin-top:18px;font-size:14px;color:var(--subtle)}
+.hero-shot{margin:56px auto 0;width:min(1230px,100%);transform-origin:50% 100%;will-change:transform}
+
+/* sections */
+section{padding:120px 0}
+.alt{background:var(--bg2)}
+.dark{background:#000;color:#f5f5f7}
+.dark .muted,.dark p{color:#a1a1a6}
+.head{text-align:center;max-width:820px;margin:0 auto 56px}
+.kicker{font-size:19px;font-weight:600;margin-bottom:10px}
+.kicker.c1{color:#2367e8}.kicker.c2{color:#c27a00}.kicker.c3{color:#8c7cff}
+h2{font-size:clamp(40px,6vw,72px);line-height:1.08;font-weight:700;letter-spacing:-.01em}
+.head p{margin-top:20px;font-size:clamp(18px,2vw,22px);line-height:1.55;color:var(--muted)}
+.kbd{display:inline-flex;align-items:center;justify-content:center;min-width:2em;height:1.7em;padding:0 .5em;margin:0 .12em;border-radius:.4em;
+  font:600 .82em var(--font);vertical-align:.08em;color:var(--text);background:#fff;border:1px solid var(--line);border-bottom-width:2px}
+.dark .kbd{color:#f5f5f7;background:#2c2c2e;border-color:#48484a}
+.points{display:grid;grid-template-columns:repeat(3,1fr);gap:36px;max-width:980px;margin:64px auto 0}
+.points h3{font-size:19px;font-weight:600;margin-bottom:6px}
+.points p{font-size:16px;line-height:1.6;color:var(--muted)}
+.dark .points h3{color:#f5f5f7}
+
+/* before / after */
+.compare{position:relative;max-width:1120px;margin:0 auto;--pos:50%;user-select:none;-webkit-user-select:none;touch-action:pan-y}
+.compare img{width:100%;pointer-events:none}
+.compare .after{position:absolute;inset:0;clip-path:inset(0 0 0 var(--pos))}
+.compare .bar{position:absolute;top:7.1%;bottom:17%;left:var(--pos);width:2px;margin-left:-1px;background:#fff;box-shadow:0 0 0 1px rgba(0,0,0,.08),0 0 18px rgba(0,0,0,.18)}
+.compare .knob{position:absolute;top:50%;left:50%;width:46px;height:46px;margin:-23px 0 0 -23px;border-radius:50%;background:rgba(255,255,255,.92);
+  -webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);box-shadow:0 6px 20px rgba(0,0,0,.18);display:flex;align-items:center;justify-content:center;color:#1d1d1f}
+.compare input{position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:ew-resize;margin:0}
+.compare .tag{position:absolute;top:10%;padding:5px 12px;border-radius:999px;font-size:13px;font-weight:600;background:rgba(29,29,31,.72);color:#fff;-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px)}
+.compare .tag.l{left:10%}.compare .tag.r{right:10%}
+.hint{text-align:center;margin-top:18px;font-size:14px;color:var(--subtle)}
+
+/* film */
+.film{max-width:1060px;margin:0 auto;border-radius:22px;overflow:hidden;background:#000;box-shadow:0 30px 80px rgba(0,0,0,.18);position:relative}
+.film video{width:100%;aspect-ratio:16/9;background:#000}
+.film .play{position:absolute;inset:0;display:flex;align-items:flex-end;justify-content:center;padding-bottom:9%;background:none;border:0;cursor:pointer}
+.film .play span{transition:transform .3s}
+.film .play:hover span{transform:scale(1.06)}
+.film .play span{width:84px;height:84px;border-radius:50%;background:rgba(255,255,255,.9);display:flex;align-items:center;justify-content:center;box-shadow:0 10px 30px rgba(0,0,0,.25)}
+.film.playing .play{display:none}
+
+/* feature tiles */
+.tiles{display:grid;grid-template-columns:repeat(3,1fr);gap:20px}
+.tile{background:#fff;border-radius:24px;padding:34px 32px 36px}
+.alt .tile{background:#fff}
+.tile svg{width:40px;height:40px;margin-bottom:22px}
+.tile h3{font-size:24px;font-weight:700;margin-bottom:8px}
+.tile p{font-size:16px;line-height:1.6;color:var(--muted)}
+
+/* models */
+.chips{display:flex;flex-wrap:wrap;justify-content:center;gap:12px;max-width:900px;margin:0 auto}
+.chips span{padding:11px 20px;border-radius:999px;background:var(--bg2);font-size:16px;font-weight:500}
+.chips span.more{background:none;color:var(--muted);font-weight:400}
+
+/* privacy */
+.privacy{display:grid;grid-template-columns:repeat(3,1fr);gap:20px}
+.privacy div{border-radius:24px;padding:34px 30px;background:#1c1c1e}
+.privacy h3{font-size:22px;color:#f5f5f7;margin:18px 0 8px}
+.privacy p{font-size:16px;line-height:1.6}
+.privacy svg{width:36px;height:36px}
+
+/* shortcuts */
+.keys{max-width:760px;margin:0 auto;background:#fff;border-radius:24px;padding:10px 34px}
+.keys div{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:17px 0;border-bottom:1px solid #e8e8ed;font-size:17px}
+.keys div:last-child{border-bottom:0}
+.keys span:last-child{white-space:nowrap}
+
+/* final call */
+.final{text-align:center}
+.final img{width:84px;height:84px;margin:0 auto 26px}
+.final h2{margin-bottom:18px}
+.final .lead{margin-bottom:34px}
+.final .fine{max-width:640px;margin:26px auto 0;font-size:14px;line-height:1.7;color:var(--subtle)}
+
+footer{background:var(--bg2);border-top:1px solid #e3e3e8;padding:26px 0 40px;font-size:12px;color:var(--subtle)}
+footer .wrap{display:flex;flex-wrap:wrap;gap:10px 22px;align-items:center}
+footer a{color:var(--muted)}
+footer .sp{margin-left:auto}
+
+/* reveal on scroll */
+.rv{opacity:0;transform:translateY(36px);transition:opacity .9s cubic-bezier(.2,.7,.2,1),transform .9s cubic-bezier(.2,.7,.2,1)}
+.rv.in{opacity:1;transform:none}
+.rv.d1{transition-delay:.08s}.rv.d2{transition-delay:.16s}.rv.d3{transition-delay:.24s}.rv.d4{transition-delay:.32s}.rv.d5{transition-delay:.4s}
+@media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}.rv{opacity:1;transform:none;transition:none}.hero-shot{transform:none!important}}
+
+@media (max-width:900px){
+  .points,.tiles,.privacy{grid-template-columns:1fr 1fr}
+}
+@media (max-width:640px){
+  section{padding:84px 0}
+  .nav nav a:not(.pill){display:none}
+  .hero{padding-top:48px}
+  .points,.tiles,.privacy{grid-template-columns:1fr}
+  .points{gap:26px;margin-top:44px}
+  .keys{padding:4px 20px}
+  .keys div{font-size:15px}
+  h2{font-size:clamp(32px,9vw,40px)}
+  .film .play{padding-bottom:4%}
+  .film .play span{width:54px;height:54px}
+  .film .play svg{width:22px;height:22px}
+  .hero h1{font-size:clamp(44px,13vw,56px)}
+  footer .sp{margin-left:0}
+}
+</style>
+</head>
+<body>
+<header class="nav">
+  <div class="wrap">
+    <a class="brand" href="#top" aria-label="屏译 SnapTrans 首页"><img src="assets/logo.png" alt="">屏译</a>
+    <nav aria-label="页面导航">
+      <a href="#translate">功能</a>
+      <a href="#lookup">查词</a>
+      <a href="#privacy">隐私</a>
+      <a class="pill" href="https://github.com/CenYangtze/eztrans/releases/latest">下载</a>
+    </nav>
+  </div>
+</header>
+
+<main id="top">
+  <section class="hero" aria-labelledby="hero-title">
+    <div class="wrap">
+      <img class="logo rv" src="assets/logo.png" alt="屏译图标">
+      <p class="eyebrow rv d1">屏译 SnapTrans</p>
+      <h1 id="hero-title" class="rv d1">看见，<span class="grad">即懂。</span></h1>
+      <p class="lead rv d2">框选屏幕上的任何文字，译文即刻呈现。<br>为 Windows 打造的截图翻译、译图与查词工具。</p>
+      <div class="cta rv d3">
+        <a class="btn primary" href="https://github.com/CenYangtze/eztrans/releases/latest">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v11M7 10.5l5 5 5-5M5 20h14"/></svg>下载 Windows 版</a>
+        <button class="btn link" type="button" data-film>观看影片
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9.5"/><path d="M10 8.5l5.5 3.5-5.5 3.5z" fill="currentColor" stroke="none"/></svg></button>
+      </div>
+      <p class="note rv d4">适用于 Windows 10 22H2 与 Windows 11 · x64 / ARM64</p>
+    </div>
+    <img class="hero-shot rv d3" id="heroShot" src="assets/hero.webp" width="1640" height="744" alt="屏译悬浮窗：框选一段英文后，旁边的悬浮窗显示中文译文">
+  </section>
+
+  <section id="translate" class="alt" aria-labelledby="t-title">
+    <div class="wrap">
+      <div class="head">
+        <p class="kicker c1 rv">框选翻译</p>
+        <h2 id="t-title" class="rv d1">框选，<span class="grad">即译。</span></h2>
+        <p class="rv d2">按下 <span class="kbd">Alt</span><span class="kbd">Q</span>，框住网页、PDF、视频或游戏里的任何文字。译文在悬浮窗里逐字呈现，读完按 Esc 即可。</p>
+      </div>
+      <img class="rv" src="assets/select.webp" width="1560" height="852" loading="lazy" alt="框选画面：屏幕变暗，一段英文被蓝色选框框住，显示选区尺寸">
+      <div class="points">
+        <div class="rv"><h3>看图，或先识别</h3><p>支持看图的模型直接读截图；其余模型先在本机识别文字再翻译，速度和费用由你取舍。</p></div>
+        <div class="rv d1"><h3>钉住，并排对照</h3><p>按 Ctrl+P 钉住窗口，可同时保留多段译文；原文与译文还能左右并排。</p></div>
+        <div class="rv d2"><h3>随时换模型和语言</h3><p>悬浮窗顶部直接切换模型与目标语言，44 种语言均可搜索选择。</p></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="image" aria-labelledby="i-title">
+    <div class="wrap">
+      <div class="head">
+        <p class="kicker c2 rv">原位译图</p>
+        <h2 id="i-title" class="rv d1">排版不变，<span class="grad">只换语言。</span></h2>
+        <p class="rv d2">按下 <span class="kbd">Alt</span><span class="kbd">Shift</span><span class="kbd">Q</span>，生成与原图同样尺寸的译图：抹去原文，按原来的位置与字号写入译文，并自动复制到剪贴板。</p>
+      </div>
+      <div class="compare rv" id="compare">
+        <img src="assets/card-en.webp" width="1420" height="842" loading="lazy" alt="原图：英文食谱卡片">
+        <img class="after" src="assets/card-zh.webp" width="1420" height="842" loading="lazy" alt="译图：同一张食谱卡片，文字已换成中文">
+        <span class="tag l">原图</span><span class="tag r">译图</span>
+        <div class="bar"><div class="knob"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l-5 6 5 6M15 6l5 6-5 6"/></svg></div></div>
+        <input type="range" min="0" max="100" value="50" step="0.1" aria-label="拖动对比原图与译图">
+      </div>
+      <p class="hint">拖动滑块，对比原图与译图</p>
+    </div>
+  </section>
+
+  <section id="lookup" class="dark" aria-labelledby="l-title">
+    <div class="wrap">
+      <div class="head">
+        <p class="kicker c3 rv">查词</p>
+        <h2 id="l-title" class="rv d1">指哪，<span class="grad">查哪。</span></h2>
+        <p class="rv d2">把鼠标停在英文单词上，按下 <span class="kbd">Alt</span><span class="kbd">W</span>。音标、词性、释义、词组与例句，一张卡片全部呈现。无需配置模型。</p>
+      </div>
+      <img class="rv" src="assets/dict.webp" width="1320" height="690" loading="lazy" alt="深色模式下的词典卡片：serendipity 的音标、释义与例句">
+      <div class="points">
+        <div class="rv"><h3>两种取词方式</h3><p>默认查询光标旁的单词；也可以在设置中改成先框选，再查询选中的词或短语。</p></div>
+        <div class="rv d1"><h3>两个词典来源</h3><p>有道词典与 Google 翻译可选，“自动”模式下一个不可用时换用另一个。</p></div>
+        <div class="rv d2"><h3>卡片里继续查</h3><p>在卡片的搜索框输入新的单词即可接着查，也能一键打开网页版查看完整释义。</p></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="film-section" aria-labelledby="f-title">
+    <div class="wrap">
+      <div class="head">
+        <h2 id="f-title" class="rv">三十五秒，<span class="grad">了解屏译。</span></h2>
+      </div>
+      <div class="film rv" id="film">
+        <video id="filmVideo" preload="none" playsinline poster="assets/film-poster.jpg" src="assets/snaptrans.mp4" aria-label="屏译 SnapTrans 介绍影片"></video>
+        <button class="play" type="button" data-film aria-label="播放影片"><span><svg width="30" height="30" viewBox="0 0 24 24"><path d="M8 5.5l11 6.5-11 6.5z" fill="#1d1d1f"/></svg></span></button>
+      </div>
+    </div>
+  </section>
+
+  <section id="features" class="alt" aria-labelledby="ft-title">
+    <div class="wrap">
+      <div class="head"><h2 id="ft-title" class="rv">小巧，<span class="grad">却周到。</span></h2></div>
+      <svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
+        <linearGradient id="ig" x1="2" y1="2" x2="22" y2="22" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#2367e8"/><stop offset=".55" stop-color="#5b5cf6"/><stop offset="1" stop-color="#9b5cf6"/></linearGradient>
+      </defs></svg>
+      <div class="tiles">
+        <div class="tile rv"><svg viewBox="0 0 24 24" fill="none" stroke="url(#ig)" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"><path d="M11 3l1.9 5.1L18 10l-5.1 1.9L11 17l-1.9-5.1L4 10l5.1-1.9z"/><path d="M18.5 15l.8 2.2 2.2.8-2.2.8-.8 2.2-.8-2.2-2.2-.8 2.2-.8z"/></svg><h3>任意模型</h3><p>OpenAI 兼容接口、Anthropic 接口，或在本机运行的 Ollama 与 LM Studio。</p></div>
+        <div class="tile rv d1"><svg viewBox="0 0 24 24" fill="none" stroke="url(#ig)" stroke-width="1.5" stroke-linecap="round"><path d="M4 8V5a1 1 0 0 1 1-1h3M16 4h3a1 1 0 0 1 1 1v3M20 16v3a1 1 0 0 1-1 1h-3M8 20H5a1 1 0 0 1-1-1v-3"/><path d="M8 10h8M8 14h5"/></svg><h3>本地识别</h3><p>Windows OCR 开箱即用；也可一键安装 PaddleOCR，文字识别全程在本机完成。</p></div>
+        <div class="tile rv d2"><svg viewBox="0 0 24 24" fill="none" stroke="url(#ig)" stroke-width="1.5" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c3.2 3.6 3.2 14.4 0 18M12 3c-3.2 3.6-3.2 14.4 0 18"/></svg><h3>44 种语言</h3><p>原文已是目标语言时，自动改译为你的第二语言。</p></div>
+        <div class="tile rv"><svg viewBox="0 0 24 24" fill="none" stroke="url(#ig)" stroke-width="1.5" stroke-linejoin="round"><path d="M20 14.5A8.5 8.5 0 1 1 9.5 4a7 7 0 0 0 10.5 10.5z"/></svg><h3>深色模式</h3><p>跟随系统自动切换，字体、字号与译图样式都可在「个性化」中调整。</p></div>
+        <div class="tile rv d1"><svg viewBox="0 0 24 24" fill="none" stroke="url(#ig)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h16M4 12h10M4 18h7"/><path d="M17 15l2 2 3-4"/></svg><h3>术语表与缓存</h3><p>固定专有名词的译法；相同内容再次翻译时直接取用缓存，省时也省钱。</p></div>
+        <div class="tile rv d2"><svg viewBox="0 0 24 24" fill="none" stroke="url(#ig)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-3-6.7"/><path d="M21 4v5h-5"/></svg><h3>安装或便携</h3><p>可安装，也可解压即用。使用 Setup 安装包安装后，新版本还能在应用内一键更新。</p></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="models" aria-labelledby="m-title">
+    <div class="wrap">
+      <div class="head">
+        <h2 id="m-title" class="rv">用你喜欢的<span class="grad">模型。</span></h2>
+        <p class="rv d1">内置常用服务商的预设，选好后填上模型名与 API Key 即可。</p>
+      </div>
+      <div class="chips rv d2">
+        <span>OpenAI</span><span>Anthropic Claude</span><span>Google Gemini</span><span>DeepSeek</span><span>阿里云百炼</span><span>智谱</span>
+        <span>月之暗面 Kimi</span><span>火山方舟</span><span>硅基流动</span><span>OpenRouter</span><span>Ollama</span><span>LM Studio</span>
+        <span class="more">以及任何 OpenAI 兼容接口</span>
+      </div>
+    </div>
+  </section>
+
+  <section id="privacy" class="dark" aria-labelledby="p-title">
+    <div class="wrap">
+      <div class="head">
+        <h2 id="p-title" class="rv">你的屏幕，<span class="grad">只属于你。</span></h2>
+        <p class="rv d1">截图从不经过我们的服务器，因为根本没有服务器。</p>
+      </div>
+      <div class="privacy">
+        <div class="rv"><svg viewBox="0 0 24 24" fill="none" stroke="url(#ig)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6"/><path d="M3 3l18 18"/></svg><h3>无账号，无遥测</h3><p>不需要注册登录，也不收集任何使用数据。</p></div>
+        <div class="rv d1"><svg viewBox="0 0 24 24" fill="none" stroke="url(#ig)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12h12M12 6l6 6-6 6"/><rect x="18" y="4" width="3" height="16" rx="1.5"/></svg><h3>只发往你选的服务</h3><p>截图与文字只发送到你配置的模型；本地模型则完全不出本机。默认不保存截图。</p></div>
+        <div class="rv d2"><svg viewBox="0 0 24 24" fill="none" stroke="url(#ig)" stroke-width="1.5" stroke-linecap="round"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg><h3>密钥本机加密</h3><p>API Key 用 Windows 数据保护加密保存在本机；查词时只发送被查的单词。</p></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="keys" class="alt" aria-labelledby="k-title">
+    <div class="wrap">
+      <div class="head">
+        <h2 id="k-title" class="rv">一切，从<span class="grad">快捷键</span>开始。</h2>
+        <p class="rv d1">每个快捷键都可以在设置中修改。</p>
+      </div>
+      <div class="keys rv d2">
+        <div><span>框选翻译</span><span><span class="kbd">Alt</span><span class="kbd">Q</span></span></div>
+        <div><span>框选译图</span><span><span class="kbd">Alt</span><span class="kbd">Shift</span><span class="kbd">Q</span></span></div>
+        <div><span>查光标旁的单词</span><span><span class="kbd">Alt</span><span class="kbd">W</span></span></div>
+        <div><span>钉住悬浮窗</span><span><span class="kbd">Ctrl</span><span class="kbd">P</span></span></div>
+        <div><span>重新翻译</span><span><span class="kbd">Ctrl</span><span class="kbd">R</span></span></div>
+        <div><span>调整字号</span><span><span class="kbd">Ctrl</span><span class="kbd">滚轮</span></span></div>
+        <div><span>查看原图</span><span>按住 <span class="kbd">空格</span></span></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="download" class="final" aria-labelledby="d-title">
+    <div class="wrap">
+      <img class="rv" src="assets/logo.png" alt="">
+      <h2 id="d-title" class="rv d1">现在，<span class="grad">试试屏译。</span></h2>
+      <p class="lead rv d2">下载与你的电脑架构一致的安装包，安装后在系统托盘里就能找到它。</p>
+      <div class="cta rv d3">
+        <a class="btn primary" href="https://github.com/CenYangtze/eztrans/releases/latest">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v11M7 10.5l5 5 5-5M5 20h14"/></svg>下载 Windows 版</a>
+        <a class="btn link" href="https://github.com/CenYangtze/eztrans">在 GitHub 上查看 ›</a>
+      </div>
+      <p class="fine rv d4">安装包名称中带有 <code>x64</code> 或 <code>arm64</code>，绝大多数电脑选 x64；带 <code>scd.zip</code> 的是免安装便携版。安装包暂未进行代码签名，首次运行时如出现“Windows 已保护你的电脑”，点击「更多信息 → 仍要运行」即可。</p>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div class="wrap">
+    <span>屏译 SnapTrans</span>
+    <a href="https://github.com/CenYangtze/eztrans">GitHub</a>
+    <a href="https://github.com/CenYangtze/eztrans/blob/main/THIRD_PARTY_NOTICES.md">第三方许可</a>
+    <span class="sp">© 2026 SnapTrans contributors</span>
+  </div>
+</footer>
+
+<script>
+(() => {
+  const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  // Fade sections in as they enter the viewport.
+  const items = document.querySelectorAll('.rv');
+  if (reduce || !('IntersectionObserver' in window)) items.forEach(e => e.classList.add('in'));
+  else {
+    const io = new IntersectionObserver(entries => entries.forEach(e => {
+      if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target); }
+    }), { rootMargin: '0px 0px -8% 0px', threshold: 0.12 });
+    items.forEach(e => io.observe(e));
+  }
+
+  // The hero product image settles from a slight zoom as the page scrolls.
+  const hero = document.getElementById('heroShot');
+  if (!reduce && hero) {
+    let ticking = false;
+    const update = () => {
+      ticking = false;
+      const r = hero.getBoundingClientRect(), vh = innerHeight;
+      const k = Math.min(1, Math.max(0, (vh - r.top) / (vh * 0.9)));
+      hero.style.transform = `scale(${(1.06 - 0.06 * k).toFixed(4)})`;
+    };
+    addEventListener('scroll', () => { if (!ticking) { ticking = true; requestAnimationFrame(update); } }, { passive: true });
+    hero.addEventListener('transitionend', update, { once: true });
+    update();
+  }
+
+  // Before/after comparison: drag, keys and a short sweep the first time it is seen.
+  const cmp = document.getElementById('compare');
+  if (cmp) {
+    const range = cmp.querySelector('input');
+    const set = v => { cmp.style.setProperty('--pos', v + '%'); range.value = v; };
+    range.addEventListener('input', () => set(range.value));
+    if (!reduce && 'IntersectionObserver' in window) {
+      const once = new IntersectionObserver(entries => {
+        if (!entries[0].isIntersecting) return;
+        once.disconnect();
+        const start = performance.now(), keys = [[0, 50], [700, 82], [1500, 22], [2200, 50]];
+        const ease = t => t < .5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+        const step = now => {
+          const t = now - start - 500;
+          if (t < 0) return requestAnimationFrame(step);
+          for (let i = 1; i < keys.length; i++) {
+            if (t <= keys[i][0]) {
+              const [t0, v0] = keys[i - 1], [t1, v1] = keys[i];
+              set(v0 + (v1 - v0) * ease((t - t0) / (t1 - t0)));
+              return requestAnimationFrame(step);
+            }
+          }
+          set(50);
+        };
+        requestAnimationFrame(step);
+      }, { threshold: 0.6 });
+      once.observe(cmp);
+    }
+  }
+
+  // "Watch the film" buttons scroll to the film and play it.
+  const film = document.getElementById('film'), video = document.getElementById('filmVideo');
+  document.querySelectorAll('[data-film]').forEach(b => b.addEventListener('click', () => {
+    film.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'center' });
+    film.classList.add('playing');
+    video.play().catch(() => {});
+  }));
+  video.addEventListener('play', () => { film.classList.add('playing'); video.controls = true; });
+})();
+</script>
+</body>
+</html>
